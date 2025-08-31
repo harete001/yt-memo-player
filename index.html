@@ -9,7 +9,10 @@
 <body>
     <div class="app-container">
         <nav class="app-sidebar">
-            <h1>YT Memo</h1>
+            <div class="sidebar-header">
+                <h1>YT Memo</h1>
+                <button id="toggle-sidebar-btn" title="サイドバーを折りたたむ">«</button>
+            </div>
             <ul>
                 <li><a href="#video" class="nav-link active" data-page="page-video">動画プレイヤー</a></li>
                 <li><a href="#history" class="nav-link" data-page="page-history">再生履歴</a></li>
@@ -19,9 +22,9 @@
 
         <main class="app-main">
             <!-- Page 1: Video Player -->
-            <div id="page-video" class="page">
+            <section id="page-video" class="page">
                 <div class="video-page__layout">
-                    <div class="video-page__main">
+                    <article class="video-page__main">
                         <div id="player-container">
                             <div id="player"></div>
                         </div>
@@ -33,25 +36,25 @@
                                 <button id="add-quick-memo">メモを追加</button>
                             </div>
                         </div>
-                    </div>
-                    <div class="video-page__sidebar">
                         <div class="input-area">
                             <input type="text" id="youtube-url" placeholder="YouTube動画のURLを入力">
                             <button id="paste-url">ペースト</button>
                             <button id="load-video">再生</button>
                         </div>
+                    </article>
+                    <aside class="video-page__sidebar">
                         <div class="memo-area">
                             <h2>メモ</h2>
                             <!-- メモ追加機能はクイックメモ欄に集約。このボタンはJSから参照するために残し、非表示にする -->
                             <button id="add-memo" hidden>タイムスタンプ付きでメモを追加</button>
                             <ul id="memo-list"></ul>
                         </div>
-                    </div>
+                    </aside>
                 </div>
-            </div>
+            </section>
 
             <!-- Page 2: History -->
-            <div id="page-history" class="page hidden">
+            <section id="page-history" class="page hidden">
                 <div class="history-page-container">
                     <h2>再生履歴</h2>
                     <div class="search-container">
@@ -61,15 +64,16 @@
                         <div class="history-col-title">タイトル</div>
                         <div class="history-col-memos">メモ数</div>
                         <div class="history-col-date">最終再生日時</div>
+                        <div class="history-col-actions">削除</div>
                     </div>
                     <ul id="history-list">
                         <!-- History items will be rendered here by JS -->
                     </ul>
                 </div>
-            </div>
+            </section>
 
             <!-- Page 3: Settings -->
-            <div id="page-settings" class="page hidden">
+            <section id="page-settings" class="page hidden">
                 <div class="settings-page-container">
                     <nav class="settings-sidebar">
                         <ul>
@@ -80,9 +84,9 @@
                     </nav>
                     <main class="settings-main">
                         <!-- Settings Sub-Page: General -->
-                        <div id="settings-general" class="settings-subpage">
+                        <section id="settings-general" class="settings-subpage">
                             <h2>一般設定</h2>
-                            <div class="setting-item">
+                            <section class="setting-item">
                                 <h3>テーマ設定</h3>
                                 <p>アプリの表示テーマを選択します。</p>
                                 <div class="theme-switcher">
@@ -91,35 +95,35 @@
                                     <input type="radio" id="theme-dark" name="theme" value="dark">
                                     <label for="theme-dark">ダーク</label>
                                 </div>
-                            </div>
-                        </div>
+                            </section>
+                        </section>
 
                         <!-- Settings Sub-Page: Data -->
-                        <div id="settings-data" class="settings-subpage hidden">
+                        <section id="settings-data" class="settings-subpage hidden">
                             <h2>データ管理</h2>
-                            <div class="setting-item">
+                            <section class="setting-item">
                                 <h3>設定のエクスポート</h3>
                                 <p>すべての再生履歴とメモを単一のJSONファイルとしてダウンロードします。</p>
                                 <button id="export-button">エクスポート</button>
-                            </div>
-                            <div class="setting-item">
+                            </section>
+                            <section class="setting-item">
                                 <h3>設定のインポート</h3>
                                 <p>JSONファイルから再生履歴とメモを復元します。現在のデータは上書きされますのでご注意ください。</p>
                                 <button id="import-button">インポート</button>
                                 <input type="file" id="import-file-input" accept=".json" hidden>
-                            </div>
-                        </div>
+                            </section>
+                        </section>
                         
                         <!-- Settings Sub-Page: About -->
-                        <div id="settings-about" class="settings-subpage hidden">
+                        <section id="settings-about" class="settings-subpage hidden">
                             <h2>このアプリについて</h2>
-                            <div class="setting-item">
+                            <section class="setting-item">
                                 <p>YT Memo v1.0.0</p>
-                            </div>
-                        </div>
+                            </section>
+                        </section>
                     </main>
                 </div>
-            </div>
+            </section>
         </main>
     </div>
 

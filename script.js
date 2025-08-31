@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM Elements ---
+    const appContainer = document.querySelector('.app-container');
     const youtubeUrlInput = document.getElementById('youtube-url');
+    const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
     const addMemoButton = document.getElementById('add-memo');
     const loadVideoButton = document.getElementById('load-video');
     const pasteUrlButton = document.getElementById('paste-url');
@@ -216,15 +218,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Action: Enter Edit Mode
-        if (target.closest('.memo-content') && editingMemoId !== memoId) {
+        // Action: Enter Edit Mode (triggered by edit button or content click)
+        const isEditTrigger = target.classList.contains('memo-item-edit-btn') || target.closest('.memo-content');
+        if (isEditTrigger && editingMemoId !== memoId) {
             editingMemoId = memoId;
             renderMemos();
             // After re-rendering, focus the textarea
             const textarea = memoList.querySelector(`.memo-item[data-id='${memoId}'] .memo-edit-textarea`);
             if (textarea) {
                 textarea.focus();
-                textarea.setSelectionRange(textarea.value.length, textarea.value.length); // Move cursor to end
+                // Move cursor to end
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
             }
             return;
         }
@@ -255,10 +259,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Action: Delete Memo
         if (target.classList.contains('delete-button')) {
-            memos = memos.filter(m => m.id !== memoId);
-            editingMemoId = null;
-            renderMemos();
-            saveMemosToHistory(); // Save memos after delete
+            // 削除前に確認ダイアログを表示
+            if (confirm('このメモを削除しますか？この操作は元に戻せません。')) {
+                memos = memos.filter(m => m.id !== memoId);
+                editingMemoId = null; // 編集モードだった場合も解除
+                renderMemos();
+                saveMemosToHistory(); // 削除後に保存
+            }
             return;
         }
     });
@@ -296,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <textarea class="memo-edit-textarea">${memo.text}</textarea>
                         <div class="memo-edit-buttons">
                             <button class="cancel-button">キャンセル</button>
-                            <button class="delete-button">削除</button>
                             <button class="save-button">確定</button>
                         </div>
                     </div>
@@ -306,7 +312,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.innerHTML = `
                     <div class="memo-header">
                         <h3 class="timestamp" data-time="${memo.time}">${formatTime(memo.time)}</h3>
-                        <hr>
+                        <div class="memo-item-actions">
+                            <button class="memo-item-edit-btn" title="メモを編集">編集</button>
+                            <button class="delete-button memo-item-delete-btn" title="メモを削除">削除</button>
+                        </div>
                     </div>
                     <div class="memo-content">
                         <p>${sanitizedText}</p>
@@ -384,6 +393,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="history-col-title"><a href="${videoUrl}" data-video-id="${item.id}">${item.title}</a></div>
                 <div class="history-col-memos">${memoCount}</div>
                 <div class="history-col-date">${lastPlayedDate}</div>
+                <div class="history-col-actions">
+                    <button class="history-delete-btn" data-video-id="${item.id}">削除</button>
+                </div>
             `;
             historyList.appendChild(li);
         });
@@ -394,11 +406,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     historyList.addEventListener('click', (e) => {
-        const li = e.target.closest('li');
-        if (!li || li.classList.contains('no-history')) return;
+        // Use event delegation to check which element was clicked
+        const deleteBtn = e.target.closest('.history-delete-btn');
+        const link = e.target.closest('a[data-video-id]');
 
-        const link = li.querySelector('a[data-video-id]');
-        if (link) {
+        if (deleteBtn) {
+            e.preventDefault();
+            const videoId = deleteBtn.dataset.videoId;
+            
+            // Find the video title for a more user-friendly confirmation message
+            const videoToDelete = videoHistory.find(item => item.id === videoId);
+            const videoTitle = videoToDelete ? videoToDelete.title : 'この項目';
+
+            if (confirm(`「${videoTitle}」を履歴から削除しますか？この操作は元に戻せません。`)) {
+                // Filter out the item to be deleted from the main history array
+                videoHistory = videoHistory.filter(item => item.id !== videoId);
+                
+                // Persist the change to localStorage
+                localStorage.setItem('yt-memo-history', JSON.stringify(videoHistory));
+                
+                // Re-render the history list to reflect the deletion
+                // Pass the current search term to maintain the filtered view
+                renderHistory(historySearchInput.value);
+            }
+        } else if (link) {
             e.preventDefault();
             const videoId = link.dataset.videoId;
             switchPage('page-video');
@@ -536,9 +567,38 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsText(file);
     });
 
+    // --- Sidebar Collapse Logic ---
+    function applySidebarState(isCollapsed) {
+        appContainer.classList.toggle('sidebar-collapsed', isCollapsed);
+        // ボタンのアイコンとツールチップを状態に応じて変更
+        if (isCollapsed) {
+            toggleSidebarBtn.innerHTML = '»';
+            toggleSidebarBtn.setAttribute('title', 'サイドバーを展開');
+        } else {
+            toggleSidebarBtn.innerHTML = '«';
+            toggleSidebarBtn.setAttribute('title', 'サイドバーを折りたたむ');
+        }
+    }
+
+    function saveSidebarState(isCollapsed) {
+        localStorage.setItem('yt-memo-sidebar-collapsed', isCollapsed);
+    }
+
+    function loadSidebarState() {
+        const isCollapsed = localStorage.getItem('yt-memo-sidebar-collapsed') === 'true';
+        applySidebarState(isCollapsed);
+    }
+
+    toggleSidebarBtn.addEventListener('click', () => {
+        const isCurrentlyCollapsed = appContainer.classList.contains('sidebar-collapsed');
+        applySidebarState(!isCurrentlyCollapsed);
+        saveSidebarState(!isCurrentlyCollapsed);
+    });
+
     // --- Initial Load ---
     function handleInitialLoad() {
         loadTheme();
+        loadSidebarState();
         const hash = window.location.hash;
         if (hash.startsWith('#history')) {
             switchPage('page-history');

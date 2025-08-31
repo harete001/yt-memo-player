@@ -84,22 +84,42 @@ body {
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    transition: background-color 0.2s;
+    transition: width 0.3s ease, background-color 0.2s;
+}
+
+.sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
 }
 
 .app-sidebar h1 {
     color: var(--text-on-primary-bg);
     border: none;
-    text-align: center;
     margin-top: 0;
-    margin-bottom: 30px;
+    margin-bottom: 0;
     font-size: 1.8em;
+    white-space: nowrap; /* 折りたたみアニメーション中に文字が改行されるのを防ぐ */
+}
+
+#toggle-sidebar-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-on-sidebar);
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 0 5px;
+    transition: transform 0.3s ease;
 }
 
 .app-sidebar ul {
     list-style: none;
     padding: 0;
     margin: 0;
+}
+.app-sidebar ul {
+    white-space: nowrap; /* 折りたたみアニメーション中に文字が改行されるのを防ぐ */
 }
 
 .app-sidebar ul li a {
@@ -119,22 +139,70 @@ body {
 
 .app-main {
     flex-grow: 1;
-    overflow-y: auto;
+    position: relative; /* 各ページを重ねて表示するための基準 */
+}
+
+/* ページ全体を重ねて表示するための基本スタイル */
+.page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto; /* 履歴ページなど、コンテンツが縦長になるページのためにスクロールを許可 */
     padding: 30px;
+    background-color: var(--bg-primary); /* 下のページが透けるのを防ぐ */
+    box-sizing: border-box;
+}
+
+/* 動画プレイヤーページは特殊なFlexレイアウトを使い、内部でスクロールを制御 */
+#page-video {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* ページ自体はスクロールさせない */
+}
+
+/* --- Sidebar Collapsed State --- */
+.app-container.sidebar-collapsed .app-sidebar {
+    width: 60px; /* 折りたたんだ時の幅 */
+}
+
+/* ホバー時に展開 */
+.app-container.sidebar-collapsed .app-sidebar:hover {
+    width: 240px;
+}
+
+/* 折りたたみ時はコンテンツを非表示 */
+.app-container.sidebar-collapsed .app-sidebar .sidebar-header h1,
+.app-container.sidebar-collapsed .app-sidebar ul {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.1s, visibility 0s 0.2s;
+}
+
+/* ホバー時にコンテンツを表示 */
+.app-container.sidebar-collapsed .app-sidebar:hover .sidebar-header h1,
+.app-container.sidebar-collapsed .app-sidebar:hover ul {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.2s 0.1s; /* 少し遅れて表示 */
 }
 
 .page.hidden {
     display: none;
 }
 
+
 /* Video Page */
 .video-page__layout {
     display: flex;
-    flex-wrap: wrap;
     gap: 20px;
     max-width: 100%;
-    /* Ensure columns stretch to the same height */
     align-items: stretch;
+    /* 親(#page-video)の残りの高さをすべて埋める */
+    flex-grow: 1;
+    /* Flexアイテムがコンテンツによって親をはみ出すのを防ぐ */
+    min-height: 0;
 }
 
 .video-page__main {
@@ -177,6 +245,7 @@ h1, h2 {
     display: flex;
     gap: 10px;
     align-items: center;
+    margin-bottom: 0; /* 左カラムの最後の要素なので、不要な下マージンを削除 */
 }
 
 .memo-area, .history-page-container {
@@ -184,14 +253,11 @@ h1, h2 {
     flex-direction: column;
 }
 
-.quick-memo-area {
-    margin-top: auto; /* Pushes to the bottom */
-    margin-bottom: 0; /* Remove default card margin */
-}
-
 .memo-area {
     flex-grow: 1;
     margin-bottom: 0;
+    /* これが重要。中の#memo-listがスクロールするための高さの基点となります */
+    min-height: 0;
 }
 
 /* Form Elements */
@@ -328,6 +394,15 @@ button:disabled {
     padding-bottom: 15px;
 }
 
+.memo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border-primary);
+    margin-bottom: 8px;
+}
+
 .memo-header h3.timestamp {
     margin: 0;
     font-size: 1em;
@@ -337,9 +412,7 @@ button:disabled {
 }
 
 .memo-header hr {
-    border: 0;
-    border-top: 1px solid var(--border-primary);
-    margin: 4px 0;
+    display: none; /* JSから<hr>を削除したので、このルールは不要になるが念のため残す */
 }
 
 .memo-content {
@@ -352,14 +425,56 @@ button:disabled {
     white-space: pre-wrap;
 }
 
+.memo-item-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.memo-item-delete-btn {
+    background-color: transparent;
+    color: var(--text-secondary);
+    padding: 2px 8px;
+    font-size: 0.85em;
+    border: 1px solid var(--border-secondary);
+    line-height: 1.4; /* ボタンの高さを調整 */
+}
+
+.memo-item-delete-btn:hover {
+    background-color: var(--bg-danger);
+    color: var(--text-on-primary-bg);
+    border-color: var(--bg-danger);
+}
+
+.memo-item-edit-btn {
+    background-color: transparent;
+    color: var(--text-secondary);
+    padding: 2px 8px;
+    font-size: 0.85em;
+    border: 1px solid var(--border-secondary);
+    line-height: 1.4; /* ボタンの高さを調整 */
+}
+
+.memo-item-edit-btn:hover {
+    background-color: var(--bg-neutral);
+    color: var(--text-on-primary-bg);
+    border-color: var(--bg-neutral);
+}
+
 /* History Page */
 .search-container {
     margin-bottom: 20px;
 }
 
+ul#history-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
 .history-header {
     display: grid;
-    grid-template-columns: 4fr 1fr 2fr;
+    /* タイトル(可変), メモ数, 最終再生日時, アクション */
+    grid-template-columns: minmax(0, 1fr) 100px 210px 100px;
     gap: 20px;
     padding: 0 15px 10px 15px;
     border-bottom: 2px solid var(--border-primary);
@@ -367,21 +482,16 @@ button:disabled {
     color: var(--text-headings);
 }
 
-.history-col-memos {
-    text-align: center;
-}
-
 .history-col-date {
-    text-align: right;
     font-size: 0.9em;
     color: var(--text-secondary);
 }
 
 ul#history-list > li {
     display: grid;
-    grid-template-columns: 4fr 1fr 2fr;
+    /* ヘッダーの定義と合わせる */
+    grid-template-columns: minmax(0, 1fr) 100px 210px 100px;
     gap: 20px;
-    align-items: center;
     border-bottom: 1px solid var(--border-primary);
     transition: background-color 0.2s;
     padding: 15px;
@@ -402,6 +512,16 @@ ul#history-list > li {
     font-weight: bold;
     text-decoration: none;
     color: var(--text-accent);
+}
+
+.history-delete-btn {
+    background-color: var(--bg-danger);
+    padding: 5px 10px;
+    font-size: 0.9em;
+}
+
+.history-delete-btn:hover {
+    background-color: var(--bg-danger-hover);
 }
 
 /* Settings Page */
