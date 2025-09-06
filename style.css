@@ -367,6 +367,31 @@ button:disabled {
     height: 100%;
 }
 
+#playback-rate-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.75);
+    color: #ffffff;
+    padding: 10px 25px;
+    border-radius: 50px; /* Pill shape */
+    font-size: 2.2em;
+    font-weight: 500;
+    z-index: 10;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease-out, visibility 0s 0.2s;
+    pointer-events: none; /* Clicks should pass through to the player */
+    white-space: nowrap;
+}
+
+#playback-rate-display.show {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.2s ease-in;
+}
+
 .quick-memo-actions {
     display: flex;
     align-items: center;

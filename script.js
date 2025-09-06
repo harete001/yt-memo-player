@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const prevFrameButton = document.getElementById('prev-frame');
     const nextFrameButton = document.getElementById('next-frame');
     const memoList = document.getElementById('memo-list');
+    const playbackRateDisplay = document.getElementById('playback-rate-display');
     
     const navLinks = document.querySelectorAll('.nav-link');
     const pages = document.querySelectorAll('.page');
@@ -24,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentVideoTitle = '';
     let memos = []; // { id, time, text }
     let editingMemoId = null; // ID of the memo currently being edited
+    let rateDisplayTimeout; // Timeout for hiding the playback rate display
     let videoHistory = JSON.parse(localStorage.getItem('yt-memo-history')) || [];
     const FRAME_RATE = 60; // 格闘ゲーム動画を想定し、60fpsを基準にする
 
@@ -158,15 +160,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         // 入力ソースをクイックメモ欄に一本化
-        const text = quickMemoInput.value.trim();
-        if (text) {
-            const time = player.getCurrentTime();
-            memos.push({ id: Date.now(), time, text });
-            memos.sort((a, b) => a.time - b.time); // Keep memos sorted by time
-            renderMemos();
-            saveMemosToHistory(); // Save memos after adding a new one
-            quickMemoInput.value = ''; // 入力欄をクリア
-        }
+        const text = quickMemoInput.value.trim(); // 空白のみの入力は空文字列として扱う
+        const time = player.getCurrentTime();
+        memos.push({ id: Date.now(), time, text });
+        memos.sort((a, b) => a.time - b.time); // Keep memos sorted by time
+        renderMemos();
+        saveMemosToHistory(); // Save memos after adding a new one
+        quickMemoInput.value = ''; // 入力欄をクリア
     });
 
     // Add memo with Enter key from the quick input
@@ -236,17 +236,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Action: Save Memo
         if (target.classList.contains('save-button')) {
             const textarea = memoItem.querySelector('.memo-edit-textarea');
-            const newText = textarea.value.trim();
-            if (newText) {
-                const memo = memos.find(m => m.id === memoId);
-                if (memo) memo.text = newText;
-            } else {
-                // If text is empty, delete the memo
-                memos = memos.filter(m => m.id !== memoId);
+            const newText = textarea.value.trim(); // 空白のみの場合は空文字列として保存
+            const memo = memos.find(m => m.id === memoId);
+            if (memo) {
+                memo.text = newText;
             }
             editingMemoId = null;
             renderMemos();
-            saveMemosToHistory(); // Save memos after edit/delete
+            saveMemosToHistory(); // Save memos after edit
             return;
         }
 
@@ -637,15 +634,80 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // --- Arrow keys: Seek ---
-        if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
+        // --- Arrow keys & WASD: Seek ---
+        if (['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(event.code)) {
             event.preventDefault(); // Prevent default browser action
             if (player && typeof player.getCurrentTime === 'function') {
                 const currentTime = player.getCurrentTime();
-                const seekAmount = 1; // 1-second seek
-                const newTime = event.code === 'ArrowRight' ? currentTime + seekAmount : currentTime - seekAmount;
+                const seekAmount = event.ctrlKey ? 5 : 1; // 5 seconds with Ctrl, 1 second otherwise
+                const isForward = event.code === 'ArrowRight' || event.code === 'KeyD';
+                const newTime = isForward ? currentTime + seekAmount : currentTime - seekAmount;
                 player.seekTo(newTime, true);
             }
         }
+
+        // --- Arrow keys & WASD: Playback Rate ---
+        if (['ArrowUp', 'ArrowDown', 'KeyW', 'KeyS'].includes(event.code)) {
+            event.preventDefault(); // Prevent page scroll
+            if (player && typeof player.getPlaybackRate === 'function') {
+                const availableRates = player.getAvailablePlaybackRates();
+                const currentRate = player.getPlaybackRate();
+                const currentIndex = availableRates.indexOf(currentRate);
+                const isSpeedUp = event.code === 'ArrowUp' || event.code === 'KeyW';
+                let newRate = null;
+
+                if (isSpeedUp && currentIndex < availableRates.length - 1) {
+                    newRate = availableRates[currentIndex + 1];
+                } else if (!isSpeedUp && currentIndex > 0) { // Speed down
+                    newRate = availableRates[currentIndex - 1];
+                }
+
+                if (newRate !== null) {
+                    player.setPlaybackRate(newRate);
+                    showPlayerFeedback(`${newRate}x`);
+                }
+            }
+        }
+
+        // --- Number keys (1-9): Jump to percentage ---
+        const key = event.code;
+        // 'Digit1'-'Digit9' or 'Numpad1'-'Numpad9'
+        if ((key.startsWith('Digit') || key.startsWith('Numpad')) && key.slice(-1) !== '0') {
+            const number = parseInt(key.slice(-1), 10);
+
+            if (!isNaN(number) && number >= 1 && number <= 9) {
+                event.preventDefault();
+                if (player && typeof player.getDuration === 'function') {
+                    const duration = player.getDuration();
+                    if (duration > 0) { // Ensure duration is available
+                        const newTime = (duration * number) / 10;
+                        player.seekTo(newTime, true);
+                        showPlayerFeedback(`${number * 10}%`);
+                    }
+                }
+            }
+        }
+
+        // --- 'M' key: Add Quick Memo ---
+        if (event.code === 'KeyM') {
+            event.preventDefault();
+            // Trigger the same action as clicking the "メモを追加" button
+            addQuickMemoButton.click();
+        }
     });
+
+    // --- UI Feedback Functions ---
+    function showPlayerFeedback(text, duration = 1200) {
+        // Clear any existing timeout to reset the timer
+        clearTimeout(rateDisplayTimeout);
+
+        // Update text and show the element
+        playbackRateDisplay.textContent = text;
+        playbackRateDisplay.classList.add('show');
+
+        // Set a timeout to hide the element after a short duration
+        rateDisplayTimeout = setTimeout(() => {
+            playbackRateDisplay.classList.remove('show');
+        }, duration);
+    }
 });
